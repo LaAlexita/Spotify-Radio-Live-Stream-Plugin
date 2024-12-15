@@ -8,10 +8,10 @@ This Spicetify extension adds a live radio stream player to your Spotify desktop
 ## Features
 
 - 🎧 Live radio stream integration
-- 🎚️ Volume synchronization with Spotify
+- 🎚️ Volume synchronization with Spotify  (soon)
 - 🔘 Simple play/pause controls
-- 📍 Floating player interface
-- 💚 Spotify metadata override for radio playback
+- 📍 Floating player interface (soon)
+- 💚 Spotify metadata override for radio playback  (soon)
 
 ## Screenshot
 
