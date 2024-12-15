@@ -54,9 +54,6 @@ const RADIO_URL = 'https://s1.we4stream.com:8015/live';
 - Tested with Spotify desktop app
 - Requires Spicetify
 
-## License
-
-[Specify your license here, e.g., MIT]
 
 ## Contributing
 
