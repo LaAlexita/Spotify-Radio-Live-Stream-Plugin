@@ -1,90 +1,150 @@
 (function RadioPlugin() {
-    const RADIO_URL = 'https://s1.we4stream.com:8015/live';
+    const RADIO_STATIONS = [
+        {
+            url: 'https://s1.we4stream.com:8015/live',
+            name: 'Loca Urban',
+            cover: 'https://locaurbanlamancha.com/wp-content/uploads/2021/01/10-angel-dmad-300x300.png',
+        },
+        {
+            url: 'https://stream-153.zeno.fm/tygghf77na0uv',
+            name: 'Custom Radio',
+            cover: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/5f1c2198a5e0be0001948eeb/0x0.png',
+        },
+        {
+            url: 'https://atres-live.europafm.com/live/europafm/bitrate_1.m3u8',
+            name: 'Europa FM',
+            cover: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Europa-fm-logo.png',
+        },
+        // Puedes añadir más estaciones aquí
+    ];
+
+    let currentStationIndex = 0;
     let audio = null;
+    let hls = null;
     let radioPlaying = false;
+
+    // Cargar hls.js antes de inicializar el reproductor
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+    script.onload = () => {
+        console.log('hls.js cargado');
+        initializePlugin(); // Inicializar el plugin después de cargar hls.js
+    };
+    document.head.appendChild(script);
 
     function createRadioPlayer() {
         const container = document.createElement('div');
         container.id = 'radio-player-container';
         container.classList.add('radio-player-container');
 
-        const label = document.createElement('span');
-        label.textContent = 'Radio en vivo';
-        label.classList.add('radio-label');
+        const coverImage = document.createElement('img');
+        coverImage.src = RADIO_STATIONS[currentStationIndex].cover;
+        coverImage.alt = 'Radio en Vivo';
+        coverImage.classList.add('radio-cover-image');
+
+        const stationSelect = document.createElement('select');
+        stationSelect.classList.add('radio-station-select');
+        RADIO_STATIONS.forEach((station, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.text = station.name;
+            stationSelect.appendChild(option);
+        });
+        stationSelect.selectedIndex = currentStationIndex;
 
         const playButton = document.createElement('button');
         playButton.id = 'radio-play-button';
         playButton.textContent = '▶️';
         playButton.classList.add('radio-play-button');
 
-        audio = new Audio(RADIO_URL);
-        audio.crossOrigin = 'anonymous';
-        audio.style.display = 'none';
+        const volumeSlider = document.createElement('input');
+        volumeSlider.type = 'range';
+        volumeSlider.min = '0';
+        volumeSlider.max = '1';
+        volumeSlider.step = '0.01';
+        volumeSlider.value = '0.5';
+        volumeSlider.classList.add('radio-volume-slider');
 
-        const fakeTrack = {
-            uri: 'spotify:track:radio-plugin',
-            metadata: {
-                is_playable: true,
-                title: 'Radio en Vivo',
-                artist_name: 'Radio Station',
-                album_title: 'Radio Online',
-                image_url: 'https://i.imgur.com/yW3b6nb.png',
-            },
-        };
+        audio = document.createElement('audio');
+        audio.crossOrigin = 'anonymous';
+        audio.volume = volumeSlider.value;
+
+        setupAudioSource(); // Configurar la fuente de audio según la compatibilidad
 
         playButton.addEventListener('click', () => {
             if (!radioPlaying) {
-                syncVolume();
-                audio.play();
-                playButton.textContent = '⏸️';
-                radioPlaying = true;
-
-                Spicetify.Player.pause(); // Pausa cualquier canción que esté sonando
-
-                // Actualiza el estado del reproductor con metadatos ficticios
-                updateSpicetifyState(fakeTrack, false);
-
-                Spicetify.Player.addEventListener('volumeChange', syncVolume);
-                Spicetify.Player.addEventListener('onplay', handleSpotifyPlay);
+                startRadio();
             } else {
                 stopRadio();
             }
         });
+
+        volumeSlider.addEventListener('input', () => {
+            audio.volume = volumeSlider.value;
+        });
+
+        stationSelect.addEventListener('change', () => {
+            changeStation(parseInt(stationSelect.value));
+        });
+
+        function setupAudioSource() {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            const currentUrl = RADIO_STATIONS[currentStationIndex].url;
+            if (Hls.isSupported() && currentUrl.endsWith('.m3u8')) {
+                hls = new Hls();
+                hls.loadSource(currentUrl);
+                hls.attachMedia(audio);
+            } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                audio.src = currentUrl;
+            } else {
+                audio.src = currentUrl;
+            }
+        }
+
+        function startRadio() {
+            audio.play().catch((error) => {
+                console.error('Error al reproducir la estación de radio:', error);
+                alert('No se puede reproducir la estación de radio.');
+            });
+            playButton.textContent = '⏸️';
+            radioPlaying = true;
+
+            Spicetify.Player.pause(); // Pausar Spotify
+
+            Spicetify.Player.addEventListener('onplay', handleSpotifyPlay);
+            audio.addEventListener('ended', stopRadio);
+        }
 
         function stopRadio() {
             audio.pause();
             playButton.textContent = '▶️';
             radioPlaying = false;
 
-            Spicetify.Player.removeEventListener('volumeChange', syncVolume);
             Spicetify.Player.removeEventListener('onplay', handleSpotifyPlay);
-
-            // Restablece el estado del reproductor
-            updateSpicetifyState(null, true);
         }
 
-        container.append(playButton, label, audio);
-        return container;
-    }
-
-    function syncVolume() {
-        if (Spicetify && Spicetify.Player) {
-            audio.volume = Spicetify.Player.getVolume();
+        function handleSpotifyPlay() {
+            if (radioPlaying) {
+                stopRadio();
+            }
         }
-    }
 
-    function handleSpotifyPlay() {
-        if (radioPlaying) {
+        function changeStation(index) {
             stopRadio();
+            currentStationIndex = index;
+            setupAudioSource();
+            coverImage.src = RADIO_STATIONS[currentStationIndex].cover;
+            stationSelect.selectedIndex = currentStationIndex;
+            if (radioPlaying) {
+                startRadio();
+            }
         }
-    }
 
-    function updateSpicetifyState(track, isPaused) {
-        Spicetify.Player.origin._state.track = track;
-        Spicetify.Player.origin._state.isPaused = isPaused;
-        Spicetify.Player.origin._state.duration = 0; // La transmisión en vivo no tiene duración
-        Spicetify.Player.origin._state.position = 0;
-        Spicetify.Player.origin._onStateChanged();
+        container.append(coverImage, stationSelect, playButton, volumeSlider, audio);
+        return container;
     }
 
     function addRadioPlayerToUI() {
@@ -97,41 +157,63 @@
 
     async function initializePlugin() {
         while (!Spicetify || !Spicetify.Player || !Spicetify.showNotification) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
         }
         addRadioPlayerToUI();
     }
-
-    initializePlugin();
 
     const style = document.createElement('style');
     style.textContent = `
         .radio-player-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 90px;
             right: 20px;
             z-index: 1000;
             display: flex;
             align-items: center;
-            gap: 10px;
-            background: #1db954;
+            background: rgba(25, 20, 20, 0.9);
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            padding: 10px 15px;
+            padding: 10px;
             color: #fff;
-            font-family: sans-serif;
-            font-size: 14px;
+            font-family: Arial, sans-serif;
         }
-        .radio-label {
-            font-weight: bold;
+        .radio-cover-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
+            margin-right: 15px;
+        }
+        .radio-station-select {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 5px;
+            margin-right: 15px;
+            border-radius: 4px;
+            font-size: 14px;
         }
         .radio-play-button {
             background: transparent;
             border: none;
             color: #fff;
-            font-size: 16px;
+            font-size: 28px;
             cursor: pointer;
             outline: none;
+            margin-right: 15px;
+        }
+        .radio-volume-slider {
+            width: 100px;
+            margin-left: 10px;
+        }
+        @media (max-width: 600px) {
+            .radio-player-container {
+                flex-direction: column;
+                align-items: flex-start;
+                bottom: 20px;
+            }
+            .radio-cover-image {
+                margin-bottom: 10px;
+            }
         }
     `;
     document.head.appendChild(style);
