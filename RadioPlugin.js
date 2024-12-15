@@ -23,12 +23,12 @@
     let hls = null;
     let radioPlaying = false;
 
-    // Cargar hls.js antes de inicializar el reproductor
+    // Cargar hls.js para reproducir estaciones de radio que usan HLS
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
     script.onload = () => {
         console.log('hls.js cargado');
-        initializePlugin(); // Inicializar el plugin después de cargar hls.js
+        initializePlugin(); 
     };
     document.head.appendChild(script);
 
@@ -69,7 +69,7 @@
         audio.crossOrigin = 'anonymous';
         audio.volume = volumeSlider.value;
 
-        setupAudioSource(); // Configurar la fuente de audio según la compatibilidad
+        setupAudioSource();
 
         playButton.addEventListener('click', () => {
             if (!radioPlaying) {
@@ -112,7 +112,7 @@
             playButton.textContent = '⏸️';
             radioPlaying = true;
 
-            Spicetify.Player.pause(); // Pausar Spotify
+            Spicetify.Player.pause();
 
             Spicetify.Player.addEventListener('onplay', handleSpotifyPlay);
             audio.addEventListener('ended', stopRadio);
