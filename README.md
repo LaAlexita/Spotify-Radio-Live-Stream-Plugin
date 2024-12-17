@@ -13,7 +13,7 @@ This Spicetify extension adds a live radio stream player to your Spotify desktop
 
 ## Screenshot
 
-![Radio Plugin Screenshot](https://i.postimg.cc/QdJBPVZ7/418shots-so.png)
+![Radio Plugin Screenshot](https://i.postimg.cc/RFJhrzwJ/42-1x-shots-so.png)
 
 ## Prerequisites
 
