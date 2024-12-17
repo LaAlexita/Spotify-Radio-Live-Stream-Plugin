@@ -20,17 +20,10 @@
 
     let currentStationIndex = 0;
     let audio = null;
-    let hls = null;
     let radioPlaying = false;
 
-    // Cargar hls.js para reproducir estaciones de radio que usan HLS
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-    script.onload = () => {
-        console.log('hls.js cargado');
-        initializePlugin(); 
-    };
-    document.head.appendChild(script);
+    // Inicializar el plugin directamente
+    initializePlugin();
 
     function createRadioPlayer() {
         const container = document.createElement('div');
@@ -88,20 +81,9 @@
         });
 
         function setupAudioSource() {
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
             const currentUrl = RADIO_STATIONS[currentStationIndex].url;
-            if (Hls.isSupported() && currentUrl.endsWith('.m3u8')) {
-                hls = new Hls();
-                hls.loadSource(currentUrl);
-                hls.attachMedia(audio);
-            } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-                audio.src = currentUrl;
-            } else {
-                audio.src = currentUrl;
-            }
+            audio.src = currentUrl;
+            audio.load();
         }
 
         function startRadio() {
@@ -115,7 +97,9 @@
             Spicetify.Player.pause();
 
             Spicetify.Player.addEventListener('onplay', handleSpotifyPlay);
-            audio.addEventListener('ended', stopRadio);
+            audio.addEventListener('ended', handleAudioError);
+            audio.addEventListener('stalled', handleAudioError);
+            audio.addEventListener('error', handleAudioError);
         }
 
         function stopRadio() {
@@ -124,11 +108,26 @@
             radioPlaying = false;
 
             Spicetify.Player.removeEventListener('onplay', handleSpotifyPlay);
+            audio.removeEventListener('ended', handleAudioError);
+            audio.removeEventListener('stalled', handleAudioError);
+            audio.removeEventListener('error', handleAudioError);
         }
 
         function handleSpotifyPlay() {
             if (radioPlaying) {
                 stopRadio();
+            }
+        }
+
+        function handleAudioError() {
+            if (radioPlaying) {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.src = RADIO_STATIONS[currentStationIndex].url;
+                audio.load();
+                audio.play().catch((error) => {
+                    console.error('Error al reiniciar la estación de radio:', error);
+                });
             }
         }
 
