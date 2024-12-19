@@ -14,13 +14,29 @@
             url: 'https://atres-live.europafm.com/live/europafm/bitrate_1.m3u8',
             name: 'Europa FM',
             cover: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Europa-fm-logo.png',
+            isHls: true
         },
         // Puedes añadir más estaciones aquí
     ];
 
     let currentStationIndex = 0;
     let audio = null;
+    let hls = null;
     let radioPlaying = false;
+
+    // Cargar hls.js si es necesario
+    function loadHls(callback) {
+        if (typeof Hls !== 'undefined') {
+            callback();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+        script.onload = () => {
+            callback();
+        };
+        document.head.appendChild(script);
+    }
 
     // Inicializar el plugin directamente
     initializePlugin();
@@ -61,6 +77,7 @@
         audio = document.createElement('audio');
         audio.crossOrigin = 'anonymous';
         audio.volume = volumeSlider.value;
+        audio.autoplay = false;
 
         setupAudioSource();
 
@@ -81,9 +98,52 @@
         });
 
         function setupAudioSource() {
-            const currentUrl = RADIO_STATIONS[currentStationIndex].url;
-            audio.src = currentUrl;
+            const currentStation = RADIO_STATIONS[currentStationIndex];
+            const currentUrl = currentStation.url;
+
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            audio.pause();
+            audio.src = '';
             audio.load();
+
+            if (currentStation.isHls) {
+                loadHls(() => {
+                    if (Hls.isSupported()) {
+                        hls = new Hls();
+                        hls.loadSource(currentUrl);
+                        hls.attachMedia(audio);
+
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            if (radioPlaying) {
+                                audio.play();
+                            }
+                        });
+
+                        hls.on(Hls.Events.ERROR, (event, data) => {
+                            console.error('Error en hls.js:', data);
+                            alert('No se puede reproducir la estación de radio.');
+                        });
+                    } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+                        audio.src = currentUrl;
+                        audio.addEventListener('loadedmetadata', () => {
+                            if (radioPlaying) {
+                                audio.play();
+                            }
+                        });
+                    } else {
+                        alert('El streaming HLS no es soportado en este navegador.');
+                    }
+                });
+            } else {
+                audio.src = currentUrl;
+                audio.load();
+                if (radioPlaying) {
+                    audio.play();
+                }
+            }
         }
 
         function startRadio() {
@@ -123,8 +183,7 @@
             if (radioPlaying) {
                 audio.pause();
                 audio.currentTime = 0;
-                audio.src = RADIO_STATIONS[currentStationIndex].url;
-                audio.load();
+                setupAudioSource();
                 audio.play().catch((error) => {
                     console.error('Error al reiniciar la estación de radio:', error);
                 });
@@ -152,6 +211,7 @@
 
         const playerContainer = createRadioPlayer();
         document.body.appendChild(playerContainer);
+        makeElementDraggable(playerContainer);
     }
 
     async function initializePlugin() {
@@ -161,20 +221,65 @@
         addRadioPlayerToUI();
     }
 
+    // Función de movimiento del container
+    function makeElementDraggable(element) {
+        let isDragging = false;
+        let startX, startY, currentX = 0, currentY = 0;
+
+        element.style.cursor = 'move';
+
+        element.addEventListener('mousedown', dragStart);
+
+        function dragStart(e) {
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX - currentX;
+            startY = e.clientY - currentY;
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            currentX = e.clientX - startX;
+            currentY = e.clientY - startY;
+
+            setTranslate(currentX, currentY);
+        }
+
+        function dragEnd() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+        }
+
+        function setTranslate(xPos, yPos) {
+            element.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        }
+    }
+
     const style = document.createElement('style');
     style.textContent = `
         .radio-player-container {
+            
             position: fixed;
             bottom: 90px;
             right: 20px;
             z-index: 1000;
             display: flex;
             align-items: center;
-            background: rgba(25, 20, 20, 0.9);
+            background: rgb(10 10 10 / 90%);
             border-radius: 8px;
             padding: 10px;
             color: #fff;
-            font-family: Arial, sans-serif;
+            width: 380px; 
+            height: 100px;
+            user-select: none;
+            touch-action: none; 
+            will-change: transform; 
+            transition: transform 0.1s ease; 
         }
         .radio-cover-image {
             width: 60px;
