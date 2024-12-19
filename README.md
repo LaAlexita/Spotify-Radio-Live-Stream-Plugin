@@ -45,7 +45,7 @@ This Spicetify extension adds a live radio stream player to your Spotify desktop
 - Adjust Volume: Move the volume slider to adjust the audio level of the radio.
 - Move Player: Click and drag the player to place it anywhere in the Spotify window.
 
-- 
+  
 ## Customization
 
 To change the radio stream URL, modify the `RADIO_URL` constant in the script:
