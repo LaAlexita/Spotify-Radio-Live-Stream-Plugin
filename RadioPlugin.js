@@ -221,7 +221,7 @@
         addRadioPlayerToUI();
     }
 
-    // Función de movimiento del container
+    // Función makeElementDraggable actualizada
     function makeElementDraggable(element) {
         let isDragging = false;
         let startX, startY, currentX = 0, currentY = 0;
@@ -231,7 +231,10 @@
         element.addEventListener('mousedown', dragStart);
 
         function dragStart(e) {
-            e.preventDefault();
+            // Solo iniciar el arrastre si el elemento clicado es el contenedor
+            if (e.target !== element) {
+                return;
+            }
             isDragging = true;
             startX = e.clientX - currentX;
             startY = e.clientY - currentY;
@@ -251,12 +254,13 @@
 
         function dragEnd() {
             isDragging = false;
+
             document.removeEventListener('mousemove', drag);
             document.removeEventListener('mouseup', dragEnd);
         }
 
         function setTranslate(xPos, yPos) {
-            element.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+            element.style.transform = `translate(${xPos}px, ${yPos}px)`;
         }
     }
 
@@ -274,7 +278,6 @@
             border-radius: 8px;
             padding: 10px;
             color: #fff;
-            width: 380px; 
             height: 100px;
             user-select: none;
             touch-action: none; 
@@ -288,12 +291,12 @@
             margin-right: 15px;
         }
         .radio-station-select {
-            background: transparent;
+            background: rgb(22 22 22 / 87%);
             border: 1px solid #fff;
             color: #fff;
-            padding: 5px;
+            border-radius: 8px;
+            padding: 10px;
             margin-right: 15px;
-            border-radius: 4px;
             font-size: 14px;
         }
         .radio-play-button {
